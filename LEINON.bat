@@ -26,21 +26,18 @@ set "colors[15]=38;2;60;0;90"
 
 :License 
 @echo off
-setlocal EnableDelayedExpansion
-title License Key Protected Script
-
-:: --- Valid keys list
-set "VALID_KEYS=00x12u2838u89djwc778dcnmcdc 00xsuhd798he87ghewyhdhasbds 00xy9q23d98qyus798yduashdau"
-
-:: --- Storage for used keys
-set "USED_KEYS_FILE=used_keys.txt"
-set "HARDWARE_FILE=hardware.txt"
-
-:: --- Get hardware ID (PC-specific)
-for /f "tokens=2 delims==" %%A in ('wmic csproduct get UUID /value') do set "HARDWARE_ID=%%A"
+title License Key Access System
 
 :RETRY
 cls
+
+:: Get HWID (based on Volume Serial Number)
+for /f "tokens=2 delims==" %%A in ('"wmic diskdrive get SerialNumber /value | findstr /r /c:"SerialNumber=""') do set "HWID=%%A"
+if not defined HWID (
+    for /f "tokens=5" %%A in ('vol C:') do set "HWID=%%A"
+)
+
+:: Display banner
 echo(
 echo ██▓    ▓█████  ██▓ ███▄    █  ▒█████   ███▄    █     ▄▄▄       ▄████▄   ▄████▄  ▓█████   ██████   ██████ 
 echo ▓██▒    ▓█   ▀ ▓██▒ ██ ▀█   █ ▒██▒  ██▒ ██ ▀█   █    ▒████▄    ▒██▀ ▀█  ▒██▀ ▀█  ▓█   ▀ ▒██    ▒ ▒██    ▒ 
@@ -51,54 +48,57 @@ echo ░ ▒░▓  ░░░ ▒░ ░░▓  ░ ▒░   ▒ ▒ ░ ▒░�
 echo ░ ░ ▒  ░ ░ ░  ░ ▒ ░░ ░░   ░ ▒░  ░ ▒ ▒░ ░ ░░   ░ ▒░     ▒   ▒▒ ░  ░  ▒     ░  ▒    ░ ░  ░░ ░▒  ░ ░░ ░▒  ░ ░
 echo  ░ ░      ░    ▒ ░   ░   ░ ░ ░ ░ ░ ▒     ░   ░ ░      ░   ▒   ░        ░           ░   ░  ░  ░  ░  ░  ░  
 echo    ░  ░   ░  ░ ░           ░     ░ ░           ░          ░  ░░ ░      ░ ░         ░  ░      ░        ░  
-echo(                                                               ░        ░                                 
-set /p "LICENSE=Enter your license key: "
+echo                                                               ░        ░                                  
 
-:: Check if the key is valid
-set "KEY_VALID=0"
-for %%k in (%VALID_KEYS%) do (
-    if /I "!LICENSE!"=="%%k" set "KEY_VALID=1"
+:: Valid license keys list - put one key per line here:
+setlocal EnableDelayedExpansion
+set "VALID_KEYS=00xsuhd798he87ghewyhdhasbds 00xy9q23d98qyus798yduashdau 00xsdh98u3whe97wqehriuyfhwu 00xujhnd78asyd7qhqdy7u2yhdu 00xndsaudhsuad893dwqdwqdqwd 00x09saujf803ujf82uh38f9732 00x3xhynd378hsxrn783trcn3rc 00xynd378hsxrn783trcn3rcbzf 00x92xnqhe83cn28dhq7fh3nqzs 00xdn28xmcq29qdhz62mcxhejsv 00x83nch72mcxhd8273nsjdhqzd 00x28xnwq7cnc93ndh28ehxqwst 00xs72mcxn28qcnw73dhq2mshqh 00x3hdn29xmc28wqdhsh37euiqy 00xxcnw83dhqmc7sh28xn3qpsdh 00xndhcq72wqmxzns93he8dnszb 00x9283ndhe8nsq92mxchqwns9n 00x73nchd9283xns92mcwheh3sc 00x82ncmq9dhdnwq72cn38dnxwc 00xhs9x83ndqshc93nqwe7cnxss 00xdxh378dmcq2nshe93nxqwdza 00xq92mcnxh83nsh28cnsqmx87x 00x9cnxw93nd8xqhe72nsxcm2hd 00x83hcwqdm9zdh28nsqcmxhe93 00xdnsh28nsq9xwcm3hsdne92c2 00xcx823dshnmw7c8xhe29shqwd 00x8nxq92mcnhs83zqdnwmx82e5 00xq82xcnw3hd9zshcnq82mxdwv 00x93ndxh28mcqshe72ncxdsh31 00xxmcnsq7dhdnwz9mxchseu39k 00xsx92hdwqzndxh37cnq92ejsc 00x2qndwmc93ne82zshxcmnsd3z 00xd83qmcw2xnsd93heuxncm381 00xcnshd92mxzqwnc8dhesu3296 00xe29mcnsq83nchd7w9squ32nn 00xxzqcnwd3hehs29mxqnsue937 00x28ndqh29shxnqwm3esudnx7l"
+
+:: Prompt user
+set /p "KEY=Enter your license key: "
+echo Verifying license...
+
+:: Check license file
+set "KEY_FILE=license_data.txt"
+set "STORED_KEY="
+set "STORED_HWID="
+
+if exist "%KEY_FILE%" (
+    for /f "tokens=1,2 delims=:" %%A in ('findstr /i "%KEY%" "%KEY_FILE%"') do (
+        set "STORED_KEY=%%A"
+        set "STORED_HWID=%%B"
+    )
 )
 
-if !KEY_VALID!==0 (
-    echo.
-    echo ERROR: Invalid license key.
-    timeout /t 2 /nobreak >nul
-    goto RETRY
+:: If key stored and HWID matches
+if /i "%KEY%"=="%STORED_KEY%" (
+    if /i "%HWID%"=="%STORED_HWID%" (
+        echo Access granted. Welcome back!
+        timeout /t 2 >nul
+        goto :banner
+    ) else (
+        echo This license key is already registered to another device.
+        timeout /t 2 >nul
+        goto :RETRY
+    )
 )
 
-:: Check if key was already used on THIS machine
-findstr /I "!LICENSE! - !HARDWARE_ID!" "%HARDWARE_FILE%" >nul
-if !errorlevel! == 0 (
-    echo.
-    echo Access granted. Welcome back!
-    goto CONTINUE
+:: Check if entered key is in valid keys list
+set "FOUND=0"
+for %%K in (%VALID_KEYS%) do (
+    if /i "%KEY%"=="%%K" set FOUND=1
 )
 
-:: Check if key has been used on ANOTHER machine
-findstr /I "!LICENSE!" "%USED_KEYS_FILE%" >nul
-if !errorlevel! == 0 (
-    echo.
-    echo ERROR: This key is already used on another machine.
-    timeout /t 3 /nobreak >nul
-    goto RETRY
+if "%FOUND%"=="1" (
+    echo %KEY%:%HWID%>>"%KEY_FILE%"
+    echo License key bound to this device.
+    timeout /t 2 >nul
+    goto :banner
+) else (
+    echo Invalid license key.
+    timeout /t 2 >nul
+    goto :RETRY
 )
-
-:: Key is valid and not used yet — record it
-echo !LICENSE! - !HARDWARE_ID!>>"%USED_KEYS_FILE%"
-echo !LICENSE! - !HARDWARE_ID!>>"%HARDWARE_FILE%"
-echo.
-echo Access granted. Welcome!
-
-:CONTINUE
-:: Simulated webhook log (replace FULL_WEBHOOK as needed)
-:: curl -s -X POST !FULL_WEBHOOK! ^
-::  -H "Content-Type: application/json" ^
-::  -d "{\"username\":\"License Logger\", \"content\":\"LICENSE USED: !LICENSE! - Hardware ID: !HARDWARE_ID! - %USERNAME%\"}" >nul
-
-cls
-echo Protected script running...
-pause
 
 :banner
 cls
