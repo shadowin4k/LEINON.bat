@@ -29,17 +29,16 @@ set "colors[15]=38;2;60;0;90"
 setlocal EnableDelayedExpansion
 title License Key Protected Script
 
-:: List of valid keys
+:: --- Valid keys list
 set "VALID_KEYS=00x12u2838u89djwc778dcnmcdc 00xsuhd798he87ghewyhdhasbds 00xy9q23d98qyus798yduashdau"
 
-:: Files to track used keys
+:: --- Storage for used keys
 set "USED_KEYS_FILE=used_keys.txt"
 set "HARDWARE_FILE=hardware.txt"
 
-:: Retrieve the PC UUID (unique ID)
-for /f "tokens=2 delims==" %%A in ('wmic csproduct get UUID /value 2^>nul') do set "HARDWARE_ID=%%A"
+:: --- Get hardware ID (PC-specific)
+for /f "tokens=2 delims==" %%A in ('wmic csproduct get UUID /value') do set "HARDWARE_ID=%%A"
 
-:: Input loop
 :RETRY
 cls
 echo(
@@ -52,14 +51,13 @@ echo ░ ▒░▓  ░░░ ▒░ ░░▓  ░ ▒░   ▒ ▒ ░ ▒░�
 echo ░ ░ ▒  ░ ░ ░  ░ ▒ ░░ ░░   ░ ▒░  ░ ▒ ▒░ ░ ░░   ░ ▒░     ▒   ▒▒ ░  ░  ▒     ░  ▒    ░ ░  ░░ ░▒  ░ ░░ ░▒  ░ ░
 echo  ░ ░      ░    ▒ ░   ░   ░ ░ ░ ░ ░ ▒     ░   ░ ░      ░   ▒   ░        ░           ░   ░  ░  ░  ░  ░  ░  
 echo    ░  ░   ░  ░ ░           ░     ░ ░           ░          ░  ░░ ░      ░ ░         ░  ░      ░        ░  
-echo                                                               ░        ░                                 
+echo(                                                               ░        ░                                 
 set /p "LICENSE=Enter your license key: "
 
+:: Check if the key is valid
 set "KEY_VALID=0"
 for %%k in (%VALID_KEYS%) do (
-    if /I "!LICENSE!"=="%%k" (
-        set "KEY_VALID=1"
-    )
+    if /I "!LICENSE!"=="%%k" set "KEY_VALID=1"
 )
 
 if !KEY_VALID!==0 (
@@ -69,35 +67,34 @@ if !KEY_VALID!==0 (
     goto RETRY
 )
 
-set "KEY_MATCHED=0"
-for /f "tokens=1,3 delims= " %%a in ('findstr /I "!LICENSE!" "%USED_KEYS_FILE%" 2^>nul') do (
-    if "%%a"=="!LICENSE!" (
-        if "%%b"=="!HARDWARE_ID!" (
-            set "KEY_MATCHED=1"
-        ) else (
-            echo.
-            echo ERROR: This license key is already used on another machine.
-            timeout /t 2 /nobreak >nul
-            goto RETRY
-        )
-    )
-)
-
-if !KEY_MATCHED!==0 (
-    echo !LICENSE! - !HARDWARE_ID!>>"%USED_KEYS_FILE%"
-    echo !LICENSE! - !HARDWARE_ID!>>"%HARDWARE_FILE%"
-    echo.
-    echo Access granted. Welcome!
-) else (
+:: Check if key was already used on THIS machine
+findstr /I "!LICENSE! - !HARDWARE_ID!" "%HARDWARE_FILE%" >nul
+if !errorlevel! == 0 (
     echo.
     echo Access granted. Welcome back!
+    goto CONTINUE
 )
 
-if defined FULL_WEBHOOK (
-    curl -s -X POST !FULL_WEBHOOK! ^
-      -H "Content-Type: application/json" ^
-      -d "{\"username\":\"License Logger\", \"content\":\"LICENSE USED: !LICENSE! - Hardware ID: !HARDWARE_ID! - %USERNAME%\"}" >nul
+:: Check if key has been used on ANOTHER machine
+findstr /I "!LICENSE!" "%USED_KEYS_FILE%" >nul
+if !errorlevel! == 0 (
+    echo.
+    echo ERROR: This key is already used on another machine.
+    timeout /t 3 /nobreak >nul
+    goto RETRY
 )
+
+:: Key is valid and not used yet — record it
+echo !LICENSE! - !HARDWARE_ID!>>"%USED_KEYS_FILE%"
+echo !LICENSE! - !HARDWARE_ID!>>"%HARDWARE_FILE%"
+echo.
+echo Access granted. Welcome!
+
+:CONTINUE
+:: Simulated webhook log (replace FULL_WEBHOOK as needed)
+:: curl -s -X POST !FULL_WEBHOOK! ^
+::  -H "Content-Type: application/json" ^
+::  -d "{\"username\":\"License Logger\", \"content\":\"LICENSE USED: !LICENSE! - Hardware ID: !HARDWARE_ID! - %USERNAME%\"}" >nul
 
 cls
 echo Protected script running...
