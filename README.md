@@ -1,5 +1,5 @@
 #LEINON
-this too is for educational purposes only use with caution
+this tool is for educational purposes only use with caution
 just a clean multitool with cool features
 Developed in Python, by @shadowin4k
 Tool in English.
